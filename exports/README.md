@@ -56,4 +56,8 @@ Checked one at a time with the patched compiler (2026-11-24):
 | `of_not_not` | Mathlib.Basic.Logic.Basic (classical) | 136 | accepted, 218 s |
 | `not_imp_comm` | Mathlib.Basic.Logic.Basic (classical) | 137 | accepted, 216 s |
 | `xor_comm` | Mathlib.Basic.Logic.Basic (`grind`) | 173 | accepted, 228 s |
-| `Bl.general_b_fact_bis.goal1` | riemann-hypothesis `Lemmata/GeneralBFactBis/Imports.lean` | 968 | running |
+| `Bl.general_b_fact_bis.goal1` | riemann-hypothesis `Lemmata/GeneralBFactBis/Imports.lean` | 968 | no verdict after 85 min (likely out of heap at 8 GB, CPU shared with the build) |
+| `GroundTheory.GroupCoh.coe_conjHom_apply` | riemann-hypothesis `GroundTheory/TateCohomology/ConjAction.lean` (`rfl`) | 642 | exported, not yet checked |
+
+Closure sizes of 15 measured riemann-hypothesis leaf theorems range from 642 to 36,007 kernel
+declarations; `coe_conjHom_apply` is the smallest found.
