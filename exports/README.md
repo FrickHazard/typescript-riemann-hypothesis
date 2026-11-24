@@ -34,3 +34,26 @@ declaration plus its full dependency closure.
 | `Nat.add_comm` | 52 | accepted |
 | `Nat.add_assoc` | 41 | accepted |
 | `Nat.lt_irrefl` | 87 | accepted (slow suite, ~105 s) |
+
+## Mathlib (`31ce06e`, the riemann-hypothesis pin) and riemann-hypothesis leaves
+
+Mathlib's prebuilt cache was fetched inside `../riemann-hypothesis` with
+`MATHLIB_CACHE_GET_URL=https://cache.mathlib.org/mathlib4 lake exe mathlib/cache get`
+(Mathlib only; the riemann-hypothesis prebuilt cache is not used). Riemann-hypothesis modules
+are compiled locally: `lake build <Module>`. Then
+`LEAN_PROJECT=../riemann-hypothesis tools/export-lean.sh <Module> <decl>`.
+At this Mathlib revision the logic basics live in `Mathlib.Basic.Logic.Basic`.
+
+Checked one at a time with the patched compiler (2026-11-24):
+
+| Declaration | Source | Kernel decls | Result |
+|---|---|---|---|
+| `eq_comm_eq` | Mathlib.Basic.Logic.Basic (`rw`) | 15 | accepted, 2 s; wrong-proof mutation rejected |
+| `Fact.elim` | Mathlib.Basic.Logic.Basic | 5 | accepted, <1 s |
+| `Imp.swap` | Mathlib.Basic.Logic.Basic | 4 | accepted, 1 s |
+| `Or.elim3` | Mathlib.Basic.Logic.Basic | 8 | accepted, 1 s |
+| `em'` | Mathlib.Basic.Logic.Basic (classical) | 130 | accepted, 216 s |
+| `of_not_not` | Mathlib.Basic.Logic.Basic (classical) | 136 | accepted, 218 s |
+| `not_imp_comm` | Mathlib.Basic.Logic.Basic (classical) | 137 | accepted, 216 s |
+| `xor_comm` | Mathlib.Basic.Logic.Basic (`grind`) | 173 | accepted, 228 s |
+| `Bl.general_b_fact_bis.goal1` | riemann-hypothesis `Lemmata/GeneralBFactBis/Imports.lean` | 968 | running |
