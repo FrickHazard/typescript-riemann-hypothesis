@@ -12,7 +12,7 @@ Task Break down:
 6. Import code from MathLib, or dedupe from hook. Riemman proof uses some libraries from MathLib.
 
 Helpful resources:
-A repo that implements WASM in Typescript Types: https://github.com/MichiganTypeScript/typescript-types-only-wasm-runtime
-List and benchmark for LEAN kernels: https://github.com/leanprover/lean-kernel-arena
-The community REPO with clean up for LEAN proof: https://github.com/leanprover-community/riemann-hypothesis/tree/main
-LEAN MathLib : https://github.com/leanprover-community/mathlib4
+* A repo that implements WASM in Typescript Types: https://github.com/MichiganTypeScript/typescript-types-only-wasm-runtime
+* List and benchmark for LEAN kernels: https://github.com/leanprover/lean-kernel-arena
+* The community REPO with clean up for LEAN proof: https://github.com/leanprover-community/riemann-hypothesis/tree/main
+* LEAN MathLib : https://github.com/leanprover-community/mathlib4
