@@ -51,6 +51,10 @@ TypeScript 5.9's `_tsc.js`, run as `node --stack-size=65500 --max-old-space-size
 | nano-lean `frame-valid-63`, `-70` | depth limit | accepted (matches nano-lean), 3 s |
 | nano-lean `frame-wrong-value-63`, `-70` | depth limit | rejected, type mismatch (matches), 5–6 s |
 | nano-lean `frame-missing-binder-63` | depth limit | rejected, unbound variable (matches), 2 s |
+| nano-lean `valid-deep-sparse-scope` | depth limit | accepted (matches), 2 s |
+| nano-lean `projection-prop` | depth limit | rejected, invalid projection (matches), 299 s |
+| nano-lean `invalid-nested-parameter` | depth limit | rejected, projection type mismatch (matches), 10 s |
+| nano-lean `neutral` | depth limit | no answer within 15 min (performance, not a limit) |
 
 So the kernel logic was right; TypeScript's guard rails were the only blocker.
 
