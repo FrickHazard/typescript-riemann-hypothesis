@@ -17,3 +17,18 @@ node tools/lean2ts.mjs exports/nano-lean/smoke.ndjson exports/generated/smoke.ts
 - `invalid-unlisted-constructor`: wrongly accepted — inductive blocks are not validated yet.
 - Hit TypeScript's instantiation-depth limit instead of answering: `frame-{valid,missing-binder,wrong-value}-{63,64,65,70}`
   (63–70 nested binders), `neutral`, `valid-deep-sparse-scope`, `projection-prop`, `invalid-nested-parameter`.
+
+## Our own exports from Lean core (`lean/`)
+
+Exported with `tools/export-lean.sh Init <decl>` (lean4export 3.1.0 built against Lean 4.37.0-rc1,
+the toolchain of riemann-hypothesis and its pinned mathlib `31ce06e`). Each file is the
+declaration plus its full dependency closure.
+
+| Lemma | Kernel decls (closure) | Result |
+|---|---|---|
+| `Nat.add_zero` | 38 | accepted (and `n + 1 = n` mutation rejected) |
+| `Nat.zero_add` | 43 | accepted |
+| `Nat.le_refl` | 14 | accepted |
+| `Nat.mul_one` | 57 | accepted |
+| `Nat.succ_ne_zero` | 74 | accepted |
+| `Nat.succ_add`, `Nat.add_comm`, `Nat.add_assoc`, `Nat.lt_irrefl` | 41–87 | TS instantiation-depth limit |
