@@ -58,6 +58,13 @@ TypeScript 5.9's `_tsc.js`, run as `node --stack-size=65500 --max-old-space-size
 
 So the kernel logic was right; TypeScript's guard rails were the only blocker.
 
+## Decision (2026-11-24): option A
+
+`npm install` runs `tools/patch-typescript.mjs` on the pinned `typescript@6.0.3` (the last
+JS-based release; 7.x is the Go port), lifting the tail-recursion, instantiation-depth and
+instantiation-count guards. `npm run check` runs it through `tools/tsc.sh` (unlimited OS stack,
+`--stack-size=262144`, 8 GB heap). Option B remains the goal for a stock-`tsc` claim.
+
 ## Options for this project
 
 - **A. Patched compiler (their approach).** Pin a JS-based TypeScript (5.9 or 6.0) and apply a

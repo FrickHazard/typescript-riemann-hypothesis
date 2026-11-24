@@ -10,13 +10,12 @@ node tools/lean2ts.mjs exports/nano-lean/smoke.ndjson exports/generated/smoke.ts
 
 `tests/exports.test.ts` asserts our verdict matches nano-lean's reference checker.
 
-## Status against all 32 nano-lean fixtures (2026-11-24)
+## Status against all 32 nano-lean fixtures (2026-11-24, patched TypeScript 6.0.3)
 
-- 18 agree (all those in `nano-lean/`).
+- 30 agree with nano-lean's reference verdict (all those in `nano-lean/`; `projection-prop` is in the slow suite).
 - `forged-nat-add`: accepted, as nano-lean does without `--prelude` (needs a trusted prelude check).
 - `invalid-unlisted-constructor`: wrongly accepted — inductive blocks are not validated yet.
-- Hit TypeScript's instantiation-depth limit instead of answering: `frame-{valid,missing-binder,wrong-value}-{63,64,65,70}`
-  (63–70 nested binders), `neutral`, `valid-deep-sparse-scope`, `projection-prop`, `invalid-nested-parameter`.
+- `neutral`: no answer within 15 minutes (kernel performance; nano-lean caches whnf/defeq, we don't yet).
 
 ## Our own exports from Lean core (`lean/`)
 
@@ -31,4 +30,7 @@ declaration plus its full dependency closure.
 | `Nat.le_refl` | 14 | accepted |
 | `Nat.mul_one` | 57 | accepted |
 | `Nat.succ_ne_zero` | 74 | accepted |
-| `Nat.succ_add`, `Nat.add_comm`, `Nat.add_assoc`, `Nat.lt_irrefl` | 41–87 | TS instantiation-depth limit |
+| `Nat.succ_add` | 41 | accepted |
+| `Nat.add_comm` | 52 | accepted |
+| `Nat.add_assoc` | 41 | accepted |
+| `Nat.lt_irrefl` | 87 | accepted (slow suite, ~105 s) |

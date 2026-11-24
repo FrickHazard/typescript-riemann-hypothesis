@@ -8,5 +8,5 @@
     "skipLibCheck": true,
     "noUnusedLocals": false
   },
-  "include": ["src", "tests", "exports/generated"]
+  "include": ["src", "tests"]
 }

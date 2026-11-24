@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Proving the Riemann Hypothesis in Typescript type system",
   "scripts": {
-    "check": "tsc -p ."
+    "postinstall": "node tools/patch-typescript.mjs",
+    "check": "tools/tsc.sh -p .",
+    "check:slow": "tools/tsc.sh -p tsconfig.slow.json"
   },
   "repository": {
     "type": "git",
@@ -17,7 +19,7 @@
   },
   "homepage": "https://github.com/FrickHazard/typescript-riemann-hypothesis#readme",
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "typescript": "6.0.3"
   },
   "private": true
 }

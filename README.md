@@ -16,3 +16,13 @@ Helpful resources:
 * List and benchmark for LEAN kernels: https://github.com/leanprover/lean-kernel-arena
 * The community REPO with clean up for LEAN proof: https://github.com/leanprover-community/riemann-hypothesis/tree/main
 * LEAN MathLib : https://github.com/leanprover-community/mathlib4
+
+## Development
+
+```sh
+npm install          # also patches TypeScript's instantiation limits (docs/scaling.md)
+npm run check        # kernel tests + real Lean exports, ~3 min
+npm run check:slow   # heavier exports, ~7 min
+```
+
+Lean exports: `tools/export-lean.sh Init Nat.add_comm` (see exports/README.md).
