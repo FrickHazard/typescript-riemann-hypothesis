@@ -1,0 +1,23 @@
+{
+  "name": "typescript-riemann-hypothesis",
+  "version": "1.0.0",
+  "description": "Proving the Riemann Hypothesis in Typescript type system",
+  "scripts": {
+    "check": "tsc -p ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FrickHazard/typescript-riemann-hypothesis.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/FrickHazard/typescript-riemann-hypothesis/issues"
+  },
+  "homepage": "https://github.com/FrickHazard/typescript-riemann-hypothesis#readme",
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  },
+  "private": true
+}
