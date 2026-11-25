@@ -11,7 +11,9 @@
 import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
 
-const [, , path, capArg] = process.argv;
+const argv = process.argv.slice(2);
+const ALL = argv.includes("--all");
+const [path, capArg] = argv.filter((a) => a !== "--all");
 const CAP = Number(capArg ?? 5000);
 const ids = new Map(), names = [], kinds = [];
 const id = (n) => { let i = ids.get(n); if (i === undefined) { i = names.length; ids.set(n, i); names.push(n); kinds.push("?"); } return i; };
@@ -99,10 +101,14 @@ for (let c = 0; c < ncomp; c++) {
 const cs = [];
 for (let c = 0; c < ncomp; c++) if (size[c] <= CAP) cs.push(c);
 cs.sort((a, b) => size[a] - size[b] || a - b);
+// --all: then every larger component, in dependency order (Tarjan's numbering). The
+// in-cap set is closed under dependencies, so the whole output is a valid checking order.
+if (ALL) for (let c = 0; c < ncomp; c++) if (size[c] > CAP) cs.push(c);
 const chunks = [];
 let members = 0;
-for (const c of cs) for (let k = mOff[c]; k < mOff[c + 1]; k++) { const i = mem[k]; chunks.push(`${size[c]}\t${kinds[i]}\t${names[i]}\n`); members++; }
+for (const c of cs) for (let k = mOff[c]; k < mOff[c + 1]; k++) { const i = mem[k]; chunks.push(`${size[c] > CAP ? ">" + CAP : size[c]}\t${kinds[i]}\t${names[i]}\n`); members++; }
 process.stdout.write(chunks.join(""));
 const hist = {};
-for (const c of cs) { const s = size[c], b = s <= 10 ? "1-10" : s <= 100 ? "11-100" : s <= 1000 ? "101-1000" : `1001-${CAP}`; hist[b] = (hist[b] ?? 0) + (mOff[c + 1] - mOff[c]); }
-console.error(`${ncomp} components; constants by closure size ${JSON.stringify(hist)}; over ${CAP}: ${N - members}`);
+for (const c of cs) { if (size[c] > CAP) continue; const s = size[c], b = s <= 10 ? "1-10" : s <= 100 ? "11-100" : s <= 1000 ? "101-1000" : `1001-${CAP}`; hist[b] = (hist[b] ?? 0) + (mOff[c + 1] - mOff[c]); }
+const inCap = Object.values(hist).reduce((a, b) => a + b, 0);
+console.error(`${ncomp} components; constants by closure size ${JSON.stringify(hist)}; over ${CAP}: ${N - inCap}${ALL ? " (listed after, in dependency order)" : ""}`);
