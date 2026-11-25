@@ -26,3 +26,7 @@ npm run check:slow   # heavier exports, ~7 min
 ```
 
 Lean exports: `tools/export-lean.sh Init Nat.add_comm` (see exports/README.md).
+
+## Progress (2026-11-25)
+
+Lean kernel in TS types modeled on nano-lean (levels, whnf/defeq/infer, inductives with iota/K/structure eta, Nat literals; inductive blocks not yet validated) → `tools/lean2ts.mjs` converts lean4export exports → verified real Lean core and Mathlib lemmas and 30/32 nano-lean fixtures with one patched `tsc` (TypeScript 6.0.3) → built the riemann-hypothesis proof locally (59,828 modules, 11.4 h), ranked its 1.41M constants by dependency closure, and checked the 9,307 smallest as incremental `tsc -b` projects (`tools/batch.mjs`, persistent `tools/ExportServer.lean`) → generating the entire proof as TS projects (`tools/genall.mjs`, in progress).
