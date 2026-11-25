@@ -43,6 +43,10 @@ const setOwner = (k, n, p) => {
 };
 const getOwner = (k, n) => (n < owner[k].length ? owner[k][n] : -1);
 
+/** Node references (E123, U45) outside string literals: declaration names may contain such text. */
+const REF = /"(?:[^"\\]|\\.)*"|\b([EU]\d+)\b/g;
+const refsOf = (s) => { const out = []; for (const m of s.matchAll(REF)) if (m[1]) out.push(m[1]); return out; };
+
 const lakeEnv = { ...process.env, PATH: `${process.env.HOME}/.elan/bin:${process.env.PATH}` };
 const child = spawn("lake", ["env", SERVER, MODULE], { cwd: LEAN_PROJECT, env: lakeEnv, stdio: ["pipe", "pipe", "inherit"] });
 const it = createInterface({ input: child.stdout, crlfDelay: Infinity })[Symbol.asyncIterator]();
@@ -76,7 +80,7 @@ for (let K = 0, at = 0; at < order.length; K++, at += SIZE) {
   for (const a of aliases) setOwner(a.alias[0], Number(a.alias.slice(1)), K);
   const imports = new Map();
   for (const s of [...aliases.map((a) => a.rhs), ...decls.map((d) => d.decl)])
-    for (const r of s.match(/\b[EU]\d+\b/g) ?? []) {
+    for (const r of refsOf(s)) {
       const p = getOwner(r[0], Number(r.slice(1)));
       if (p < 0) throw new Error(`group ${K}: node ${r} has no owner`);
       if (p !== K) (imports.get(p) ?? imports.set(p, new Set()).get(p)).add(r);

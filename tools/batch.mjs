@@ -100,7 +100,8 @@ if (cmd === "next") {
 // 2. Convert, renaming export-local nodes (E12, U3) to content hashes.
 function emitBatch(reg, items, tExport) {
 const K = reg.batches;
-const sub = (s) => s.replace(/\b[EU]\d+\b/g, (r) => { const h = local.get(r); if (!h) throw new Error(`unresolved ${r}`); return h; });
+// Only rewrite node references outside string literals (declaration names may contain "U0").
+const sub = (s) => s.replace(/"(?:[^"\\]|\\.)*"|\b([EU]\d+)\b/g, (m, r) => { if (!r) return m; const h = local.get(r); if (!h) throw new Error(`unresolved ${r}`); return h; });
 const own = [], ownSet = new Set(), decls = [];
 for (const it of items) {
   if (it.alias) {
@@ -119,7 +120,7 @@ const dir = join(STATE, "projects", `b${K}`);
 mkdirSync(dir, { recursive: true });
 const imports = new Map();
 for (const s of [...own.map((o) => o[1]), ...decls.map((d) => d[1])])
-  for (const h of s.match(/\bH[0-9a-f]{16}\b/g) ?? [])
+  for (const [, h] of s.matchAll(/"(?:[^"\\]|\\.)*"|\b(H[0-9a-f]{16})\b/g)) if (h)
     if (!ownSet.has(h)) { const b = reg.nodes[h]; (imports.get(b) ?? imports.set(b, new Set()).get(b)).add(h); }
 if (K > 0 && !imports.has(K - 1)) imports.set(K - 1, new Set());
 const kernel = resolve(REPO, "src");

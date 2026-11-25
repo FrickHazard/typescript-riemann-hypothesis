@@ -44,7 +44,7 @@ rmSync(outDir, { recursive: true, force: true });
 const kernel = resolve("src");
 const KERNEL = "LZero, LSucc, LMax, LIMax, LParam, B, Sort, Const, App, Lam, Pi, Let, Proj, NatLit, StrLit, " +
   "Axiom, Defn, Thm, Opaque, QuotDecl, Induct, Ctor, Rec, RecRule, CheckDecl, Verified, AsAxiom";
-const refs = (s) => s.match(/\b[EU]\d+\b/g) ?? [];
+const refs = (s) => [...s.matchAll(/"(?:[^"\\]|\\.)*"|\b([EU]\d+)\b/g)].map((m) => m[1]).filter(Boolean);
 let declNo = 0;
 
 chunks.forEach((c, k) => {
