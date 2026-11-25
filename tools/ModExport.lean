@@ -1,7 +1,7 @@
 /-
 Per-module, resumable, parallel export of a proof's declaration closure.
 
-  lake env modexport ROOT_MODULE NAMES.txt OUTDIR SHARD NSHARDS
+  lake env modexport ROOT_MODULE NAMES.txt OUTDIR SHARD NSHARDS [THREADS]
 
 NAMES.txt lists the constants to export, one per line, as `Name.toString` prints them
 (the first column of tools/deps.lean output). They are grouped by the module that
@@ -13,8 +13,9 @@ module's declarations (constants of other modules stay references by name).
     name and renamed when complete, so an interrupted run never leaves a partial file.
   - Bounded memory and locality: the exporter's tables are fresh for every module, and a
     module's terms all live in its own .olean, read once.
-  - Parallel: run NSHARDS workers with SHARD = 0..NSHARDS-1; the .olean files are
-    memory-mapped, so their pages are shared between workers.
+  - Parallel: THREADS threads in one process share one loaded environment (loading it
+    is the expensive part, minutes for the RH closure); NSHARDS processes with
+    SHARD = 0..NSHARDS-1 also work (the .olean files are memory-mapped and shared).
 
 Needs lean4export's `exportOnly` state field (see the recipe in README.md).
 
@@ -26,8 +27,11 @@ import Std.Data.HashMap
 open Lean
 
 def main (args : List String) : IO Unit := do
-  let [root, namesPath, outDir, shardS, nShardsS] := args
-    | throw <| IO.userError "usage: modexport ROOT NAMES.txt OUTDIR SHARD NSHARDS"
+  let (root, namesPath, outDir, shardS, nShardsS, threadsS) ← match args with
+    | [r, n, o, s, k] => pure (r, n, o, s, k, "1")
+    | [r, n, o, s, k, t] => pure (r, n, o, s, k, t)
+    | _ => throw <| IO.userError "usage: modexport ROOT NAMES.txt OUTDIR SHARD NSHARDS [THREADS]"
+  let some threads := threadsS.toNat? | throw <| IO.userError "bad THREADS"
   let some shard := shardS.toNat? | throw <| IO.userError "bad SHARD"
   let some nShards := nShardsS.toNat? | throw <| IO.userError "bad NSHARDS"
   initSearchPath (← findSysroot)
@@ -53,17 +57,14 @@ def main (args : List String) : IO Unit := do
   let template ← M.run env do
     let _ ← initState env []
     get
-  let mut done := 0
-  let mut skipped := 0
-  for (idx, consts) in mine do
+  -- Export one module; returns true if it was written, false if already present.
+  let exportOne (tid : Nat) (idx : Nat) (consts : NameSet) : IO Bool := do
     let modName := modNames[idx]!
     let path := s!"{outDir}/{modName}.ndjson"
-    if ← System.FilePath.pathExists path then
-      skipped := skipped + 1
-      continue
-    let tmp := s!"{path}.tmp{shard}"
+    if ← System.FilePath.pathExists path then return false
+    let tmp := s!"{path}.tmp{shard}.{tid}"
     let h ← IO.FS.Handle.mk tmp .write
-    let old ← IO.setStdout (IO.FS.Stream.ofHandle h)
+    let old ← IO.setStdout (IO.FS.Stream.ofHandle h)   -- per thread
     try
       M.run env do
         set { template with exportOnly := some consts }
@@ -75,7 +76,23 @@ def main (args : List String) : IO Unit := do
       let _ ← IO.setStdout old
     h.flush
     IO.FS.rename tmp path
-    done := done + 1
-    if done % 500 == 0 then
-      IO.eprintln s!"shard {shard}: {done + skipped}/{mine.size} modules ({skipped} skipped), {((← IO.monoMsNow) - t0) / 1000} s"
+    return true
+  let counter ← IO.mkRef (0 : Nat)
+  let skippedRef ← IO.mkRef (0 : Nat)
+  let workers ← (List.range threads).mapM fun tid => IO.asTask (prio := .dedicated) do
+    let mut i := tid
+    while i < mine.size do
+      let (idx, consts) := mine[i]!
+      if ← exportOne tid idx consts then
+        let n ← counter.modifyGet fun n => (n + 1, n + 1)
+        if n % 1000 == 0 then
+          IO.eprintln s!"shard {shard}: {n} written, {← skippedRef.get} skipped of {mine.size}, {((← IO.monoMsNow) - t0) / 1000} s"
+      else skippedRef.modify (· + 1)
+      i := i + threads
+  for w in workers do
+    match ← IO.wait w with
+    | .ok _ => pure ()
+    | .error e => throw e
+  let done ← counter.get
+  let skipped ← skippedRef.get
   IO.eprintln s!"shard {shard}: finished {done} modules, skipped {skipped}, {((← IO.monoMsNow) - t0) / 1000} s"
