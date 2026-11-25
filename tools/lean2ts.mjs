@@ -128,12 +128,23 @@ function declarationInner(kind, d) {
 
 /** Parse an export into an ordered stream of `{alias, rhs}` and `{decl, name}` items. */
 export function convert(text, path = "<input>") {
+  names = new Map([[0, ""]]); meta = null;
+  return feed(text, path);
+}
+
+/**
+ * Continue converting a stream that shares numbering with what was fed before (the
+ * export server's output): names stay known across calls; returns only the new items.
+ */
+export function feed(text, path = "<input>") {
   inPath = path;
-  names = new Map([[0, ""]]); lines = []; decls = []; items = []; meta = null;
+  if (!names) names = new Map([[0, ""]]);
+  lines = []; decls = []; items = [];
   for (const [n, raw] of text.split("\n").entries()) {
   if (!raw.trim()) continue;
   const o = JSON.parse(raw);
-  if (n === 0 && o.meta) { meta = o.meta; continue; }
+  if (o.meta) { meta = o.meta; continue; }
+  if ("ready" in o || "batchEnd" in o) continue;
   if ("in" in o) nameEntry(o);
   else if ("il" in o) levelEntry(o);
   else if ("ie" in o) exprEntry(o);
