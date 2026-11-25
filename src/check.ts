@@ -28,7 +28,7 @@ export type CheckDecl<Env, D extends Decl> =
     : never
   : never;
 
-type CheckValue<S extends { env: any; us: string[] }, V, T> =
+type CheckValue<S extends { env: any; us: string[]; limit?: number }, V, T> =
   Infer<S, [], V, false> extends infer VT ?
     VT extends Err ? VT :
     Defeq<S, [], VT, T> extends true ? true :
@@ -50,3 +50,28 @@ export type EnvOf<Ds extends Decl[], Env = {}> =
 
 /** Assert a declaration checked: `Verified<CheckDecl<Env, D>>` errors with the kernel's message otherwise. */
 export type Verified<R extends true> = R;
+
+/** One object type with the same properties: property lookup without scanning an intersection. */
+export type Flat<E> = { [K in keyof E]: E[K] };
+
+/** A declaration tagged with its global position, for `CheckDeclAt` environments. */
+export type Idx<D, I extends number> = D & { idx: I };
+
+/**
+ * Check declaration D (at global position I) against an environment that may also hold
+ * D itself and later declarations: lookups only see entries with a smaller `idx`.
+ * The environment is built by the batch generator from distinct names.
+ */
+export type CheckDeclAt<Env, D extends Decl, I extends number> =
+  Distinct<D["lparams"]> extends false ? Err<"duplicate universe parameter", D["lparams"]> :
+  { env: Env; us: D["lparams"]; limit: I } extends infer S extends { env: Env; us: string[]; limit: I } ?
+    CheckType<S, [], D["type"]> extends infer R ?
+      R extends Err ? R :
+      D extends { kind: "axiom" | "quot" | "induct" | "ctor" | "rec" } ? true :
+      D extends { kind: "defn" | "opaque"; value: infer V } ? CheckValue<S, V, D["type"]> :
+      D extends { kind: "thm"; value: infer V } ?
+        (IsProp<S, [], D["type"]> extends true ? CheckValue<S, V, D["type"]> :
+          Err<"theorem type is not a proposition", D["name"]>) :
+      Err<"unknown declaration kind", D["kind"]>
+    : never
+  : never;

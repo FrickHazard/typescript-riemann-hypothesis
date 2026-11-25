@@ -11,9 +11,24 @@ import type { NatAdd, NatSub, NatMul, NatDiv, NatMod, NatPow, NatGcd, NatCmp, Na
 import type { Infer, IsProp } from "./infer";
 import type { Defeq } from "./defeq";
 
-export type St = { env: any; us: string[] };
+export type St = { env: any; us: string[]; limit?: number };
 
-export type DeclOf<S extends St, Name> = Name extends keyof S["env"] ? S["env"][Name] : null;
+/**
+ * Look a constant up. With a `limit` (the index of the declaration being checked), a
+ * declaration carrying an `idx` is visible only if it comes strictly earlier, as in
+ * nano-lean's `declar` (`i < self.limit`): no self- or forward references, even when one
+ * environment object holds a whole batch.
+ */
+export type DeclOf<S extends St, Name> =
+  Name extends keyof S["env"] ?
+    S["env"][Name] extends infer D ?
+      D extends { idx: infer I extends number } ?
+        S["limit"] extends number ? (Earlier<I, S["limit"]> extends true ? D : null) : D
+      : D
+    : never
+  : null;
+
+type Earlier<I extends number, L extends number> = NatCmp<`${I}`, `${L}`> extends "lt" ? true : false;
 
 // ---------------------------------------------------------------------------
 // whnf_core: beta, zeta, iota (recursors, quotients), projections. No delta.
