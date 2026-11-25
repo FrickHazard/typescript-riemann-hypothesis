@@ -63,8 +63,7 @@ node --max-old-space-size=20000 tools/closure.mjs ../rh-deps.tsv 5000 --all > ..
 # 4a. Export the whole proof per Lean module (resumable: rerun to continue; N parallel workers),
 #     then generate deterministic TypeScript per module plus manifest.json (resumable, parallel)
 cut -f1 ../rh-deps.tsv > ../rh-names.txt
-(cd ../riemann-hypothesis && for sh in 0 1 2 3; do \
-  lake env ../lean4export/.lake/build/bin/modexport Main ../rh-names.txt ../rh-ndjson $sh 4 & done; wait)
+(cd ../riemann-hypothesis && lake env ../lean4export/.lake/build/bin/modexport Main ../rh-names.txt ../rh-ndjson 0 1 11)  # 11 threads
 node tools/modts.mjs ../rh-ndjson ../rh-ts
 # 4b. Or check incrementally, smallest first, one tsc -b project per batch
 node --max-old-space-size=20000 tools/closure.mjs ../rh-deps.tsv 5000 > ../rh-order.tsv
