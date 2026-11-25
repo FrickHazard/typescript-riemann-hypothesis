@@ -132,7 +132,9 @@ for (const [b, hs] of [...imports].sort((x, y) => x[0] - y[0])) {
   if (b === K - 1) names.push("Env as Prev");
   lines.push(`import type { ${names.join(", ")} } from "../b${b}/index";`);
 }
-lines.push("", ...own.map(([h, rhs]) => `export type ${h} = ${rhs};`), "");
+lines.push("");
+for (const [h, rhs] of own) lines.push(`export type ${h} = ${rhs};`); // no spread: batches can have 10^5+ nodes
+lines.push("");
 // One environment per batch: earlier batches (flattened, so lookups do not scan an
 // intersection) plus all of this batch's declarations, each tagged with its global
 // index; CheckDeclAt only lets a declaration see strictly earlier entries.
@@ -142,7 +144,9 @@ decls.forEach(([name, ts], i) => {
   lines.push(`export type D${i} = ${ts};`);
   ownEntries.push(`  ${JSON.stringify(name)}: Idx<${thmAsAxiom ? `AsAxiom<D${i}>` : `D${i}`}, ${base + i}>;`);
 });
-lines.push("", "type Own = {", ...ownEntries, "};");
+lines.push("", "type Own = {");
+for (const o of ownEntries) lines.push(o);
+lines.push("};");
 lines.push(`type BatchEnv = ${K > 0 ? "Flat<Prev> & Own" : "Own"};`, "");
 decls.forEach(([name], i) =>
   lines.push(`export type Check_D${i} = Verified<CheckDeclAt<BatchEnv, D${i}, ${base + i}>>; // ${name}`));

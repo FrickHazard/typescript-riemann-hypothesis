@@ -96,13 +96,17 @@ for (let K = 0, at = 0; at < order.length; K++, at += SIZE) {
     if (p === K - 1) ns.push("Env as Prev");
     lines.push(`import type { ${ns.join(", ")} } from "../p${p}/index";`);
   }
-  lines.push("", ...aliases.map((a) => `export type ${a.alias} = ${a.rhs};`), "");
+  lines.push("");
+  for (const a of aliases) lines.push(`export type ${a.alias} = ${a.rhs};`); // no spread: groups can have 10^5+ nodes
+  lines.push("");
   const own = [];
   decls.forEach((d, i) => {
     lines.push(`export type D${i} = ${d.decl};`);
     own.push(`  ${d.name}: Idx<${thmAsAxiom ? `AsAxiom<D${i}>` : `D${i}`}, ${declCount + i}>;`);
   });
-  lines.push("", "type Own = {", ...own, "};", `type BatchEnv = ${K > 0 ? "Flat<Prev> & Own" : "Own"};`, "");
+  lines.push("", "type Own = {");
+  for (const o of own) lines.push(o);
+  lines.push("};", `type BatchEnv = ${K > 0 ? "Flat<Prev> & Own" : "Own"};`, "");
   decls.forEach((d, i) => lines.push(`export type Check_D${i} = Verified<CheckDeclAt<BatchEnv, D${i}, ${declCount + i}>>; // ${d.name}`));
   lines.push("", `export type Env = ${K > 0 ? "Prev & Own" : "Own"};`, "");
   const text = lines.join("\n");
