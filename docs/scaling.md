@@ -81,3 +81,26 @@ instantiation-count guards. `npm run check` runs it through `tools/tsc.sh` (unli
   Feasible in principle; a substantial rewrite, and unproven at Mathlib scale.
 - **C. Checkpointing (their point 3).** Works with any compiler, but is many `tsc` runs driven
   by a script, which the README's single-call requirement rules out.
+
+## Experiment: project references + proof irrelevance at boundaries (2026-11-25)
+
+`tools/lean2ts-split.mjs` splits an export into a chain of TypeScript projects (project
+references, built by one `tsc -b`). Each chunk exports its DAG nodes and an `Env`, checks its
+declarations against everything before it, and (with `--thm-as-axiom`) exports theorems as
+axioms with the same statement, so downstream projects never see proofs.
+
+On `em'` (130 Mathlib/core declarations; 216 s as one program):
+
+| Layout | Cold build | Rebuild, nothing changed |
+|---|---|---|
+| one program | 216 s | 216 s |
+| 6 projects of 25 | 208 s | |
+| 6 projects of 25, theorems as axioms | 212 s | |
+| smoke (6 decls, 3 projects) | 0.65 s | 0.14 s |
+
+One project per declaration shows why: `Classical.em` alone takes 178 s; the other 129
+declarations total ~30 s (~0.25 s each, mostly per-project overhead). Splitting gives caching,
+per-declaration timing and error localization, and theorems-as-axioms lost no completeness here,
+but a cold build costs the same: the time is in a few declarations that are expensive for our
+kernel (whnf/defeq without caching), not in re-checking. Granularity should be batches of
+declarations or Lean modules, not single declarations (~0.25-0.6 s overhead per project).

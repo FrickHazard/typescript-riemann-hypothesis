@@ -47,3 +47,6 @@ export type CheckEnv<Ds extends Decl[], Env = {}> =
 /** The environment built from already-checked declarations (for tests / reuse). */
 export type EnvOf<Ds extends Decl[], Env = {}> =
   Ds extends [infer D extends Decl, ...infer Rest extends Decl[]] ? EnvOf<Rest, Env & { [K in D["name"]]: D }> : Env;
+
+/** Assert a declaration checked: `Verified<CheckDecl<Env, D>>` errors with the kernel's message otherwise. */
+export type Verified<R extends true> = R;

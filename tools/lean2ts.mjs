@@ -13,17 +13,10 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { relative, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const [, , inPath, outPath] = process.argv;
-if (!inPath || !outPath) {
-  console.error("usage: node tools/lean2ts.mjs IN.ndjson OUT.ts");
-  process.exit(2);
-}
-
-const names = new Map([[0, ""]]); // name index -> dotted string
-const lines = []; // emitted alias lines
-const decls = []; // emitted declaration type expressions
-let meta = null;
+let inPath = "<input>";
+let names, lines, decls, items, meta;
 
 const fail = (msg) => {
   throw new Error(`${inPath}: ${msg}`);
@@ -53,6 +46,7 @@ function levelEntry(o) {
   else if ("imax" in o) rhs = `LIMax<${lvl(o.imax[0])}, ${lvl(o.imax[1])}>`;
   else fail(`unknown level entry ${JSON.stringify(o)}`);
   lines.push(`type U${i} = ${rhs};`);
+  items.push({ alias: `U${i}`, rhs });
 }
 
 function exprEntry(o) {
@@ -71,6 +65,7 @@ function exprEntry(o) {
   else if ("mdata" in o) rhs = expr(o.mdata.expr); // metadata is irrelevant to the kernel
   else fail(`unknown expression entry ${JSON.stringify(o)}`);
   lines.push(`type E${i} = ${rhs};`);
+  items.push({ alias: `E${i}`, rhs });
 }
 
 const hint = (h) => {
@@ -80,6 +75,12 @@ const hint = (h) => {
 };
 
 function declaration(kind, d) {
+  const start = decls.length;
+  declarationInner(kind, d);
+  for (const ts of decls.slice(start)) items.push({ decl: ts, name: ts.match(/^[A-Za-z]+<("(?:[^"\\]|\\.)*")/)[1] });
+}
+
+function declarationInner(kind, d) {
   const info = () => `${lit(name(d.name))}, ${strs(d.levelParams)}, ${expr(d.type)}`;
   switch (kind) {
     case "def":
@@ -125,8 +126,11 @@ function declaration(kind, d) {
   }
 }
 
-const text = readFileSync(inPath, "utf8");
-for (const [n, raw] of text.split("\n").entries()) {
+/** Parse an export into an ordered stream of `{alias, rhs}` and `{decl, name}` items. */
+export function convert(text, path = "<input>") {
+  inPath = path;
+  names = new Map([[0, ""]]); lines = []; decls = []; items = []; meta = null;
+  for (const [n, raw] of text.split("\n").entries()) {
   if (!raw.trim()) continue;
   const o = JSON.parse(raw);
   if (n === 0 && o.meta) { meta = o.meta; continue; }
@@ -138,7 +142,17 @@ for (const [n, raw] of text.split("\n").entries()) {
     if (keys.length !== 1) fail(`malformed declaration entry on line ${n + 1}`);
     declaration(keys[0], o[keys[0]]);
   }
+  }
+  return { meta, lines, decls, items };
 }
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+const [, , inArg, outPath] = process.argv;
+if (!inArg || !outPath) {
+  console.error("usage: node tools/lean2ts.mjs IN.ndjson OUT.ts");
+  process.exit(2);
+}
+convert(readFileSync(inArg, "utf8"), inArg);
 
 let src = relative(dirname(outPath), "src/index").replaceAll("\\", "/");
 if (!src.startsWith(".")) src = "./" + src;
@@ -161,3 +175,4 @@ export type Result = CheckEnv<Decls>;
 `;
 writeFileSync(outPath, out);
 console.error(`${outPath}: ${decls.length} declarations, ${lines.length} DAG nodes`);
+}

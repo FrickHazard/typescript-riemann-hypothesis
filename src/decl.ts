@@ -29,3 +29,13 @@ export type Rec<N extends string, Ps extends string[], T, I extends {
 }> = { kind: "rec" } & I & Info<N, Ps, T>;
 
 export type Decl = { kind: string; name: string; lparams: string[]; type: unknown };
+
+/**
+ * Proof irrelevance at a module boundary: once a theorem is checked, later declarations
+ * need only its statement. Exporting it as an axiom with the same type is sound (it was
+ * just proved); it is incomplete only if a later check would need to unfold the proof,
+ * which Lean's kernel tries last (theorems have the lowest reducibility).
+ */
+export type AsAxiom<D> =
+  D extends { kind: "thm"; name: infer N extends string; lparams: infer Ps extends string[]; type: infer T } ?
+    Axiom<N, Ps, T> : D;
