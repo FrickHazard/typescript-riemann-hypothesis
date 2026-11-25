@@ -73,3 +73,14 @@ TSC_HEAP_MB=12000 node tools/batch.mjs run ../rh-ts --size 300 --count 40 --thm-
 - **riemann-hypothesis cache**: `https://rh-cache.taucetiproject.org` (Cloudflare R2), fetched by `lake exe cache get` in that repo; replaces the 11 h build with a download. Its docs note it includes outputs from untrusted pull requests and volunteer machines; that cannot make our kernel accept a false proof (every exported declaration is re-checked), only make us check the wrong thing, so pin the revision. See its `verification/CACHE.md`.
 - **Original published build**: [JackMcCarthy/riemann-hypothesis-build](https://huggingface.co/datasets/JackMcCarthy/riemann-hypothesis-build/tree/9036e64326acf4acfae159b96664e9708445c1d1) on Hugging Face (Lean 4.33.1 source).
 - **Independent checks already run by that project**: `lake comparator` checks `Main` proves exactly the statements in `Challenge.lean` with only `propext`, `Quot.sound`, `Classical.choice`, and that Lean's kernel and [nanoda](https://github.com/ammkrn/nanoda_lib) accept it.
+
+## Future work: compressing proofs in the hook
+
+Today the hook (`tools/lean2ts.mjs` and the project generators) is a faithful 1:1 transcription of the exported Lean proof terms. It should eventually rewrite them before emitting TypeScript, to meet two goals at once:
+
+1. **Smaller TypeScript**: fewer bytes of `.ts`/`.d.ts` and fewer type aliases.
+2. **Faster verification by `tsc`**: fewer and cheaper type instantiations for the kernel.
+
+This optimization has to work across the whole proof, outside Lean module (and batch/project) boundaries, not one module at a time: the compression opportunities, such as subterms, instance chains or proof patterns repeated in declarations of many different modules, only show up globally. Candidate techniques: global hash-consing beyond what the export already shares; factoring repeated subterms into shared definitions, abstracted over their free variables and placed where all their users can import them; equivalent encodings that `tsc` evaluates faster (see `docs/scaling.md`); and pre-normalizing terms where that makes checking cheaper. The project layout would then follow the compressed DAG rather than export order.
+
+Soundness constraint: the kernel still checks every rewritten declaration, and a rewrite is only allowed if the original statement follows from it by the kernel's own definitional unfolding, so compression can never change what is proved.

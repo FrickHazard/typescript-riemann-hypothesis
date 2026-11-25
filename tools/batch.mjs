@@ -18,10 +18,6 @@
 //  - STATE/registry.json maps every node hash and declaration name to the batch that
 //    defines it. Batch K checks its declarations against Env of batch K-1 plus its own
 //    earlier ones, and exports Env (theorems as axioms with --thm-as-axiom).
-//
-// See FUTURE WORK in tools/lean2ts.mjs: proofs should eventually be compressed globally,
-// across module and project boundaries, for smaller .ts and faster tsc verification;
-// project layout here would then follow the compressed DAG rather than export order.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, appendFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";

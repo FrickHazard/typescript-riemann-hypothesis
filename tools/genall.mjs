@@ -9,10 +9,6 @@
 // like tools/batch.mjs projects (same environment scheme), but DAG nodes keep the
 // server's global numbering (one session numbers every name/level/expression once), so
 // no per-node hash table is held in memory: node id -> project is a growable Int32Array.
-//
-// See FUTURE WORK in tools/lean2ts.mjs: proofs should eventually be compressed globally,
-// across module and project boundaries, for smaller .ts and faster tsc verification;
-// project layout here would then follow the compressed DAG rather than export order.
 
 import { readFileSync, writeFileSync, mkdirSync, rmSync, createWriteStream } from "node:fs";
 import { join, relative, resolve } from "node:path";

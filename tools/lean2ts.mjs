@@ -10,23 +10,6 @@
 //
 // Mirrors nano-lean's importer (src/import/json.rs): unsafe/partial declarations
 // are refused, since a safe proof export must not contain them.
-//
-// FUTURE WORK: proof compression in the hook (not done yet).
-// Today the hook is a faithful 1:1 transcription of the exported proof terms. It should
-// eventually rewrite them, before emitting TypeScript, to meet two goals at once:
-//   1. smaller TypeScript (bytes of .ts / .d.ts, number of type aliases), and
-//   2. faster kernel verification by tsc (fewer and cheaper type instantiations).
-// This optimization must work on the whole proof, across Lean module (and batch/project)
-// boundaries, not one module at a time: the compression opportunities, e.g. a subterm,
-// instance chain or proof pattern repeated in many declarations of different modules,
-// only show up globally. Candidate techniques: global hash-consing beyond what the export
-// shares; factoring repeated subterms into shared definitions (abstracted over their free
-// variables) placed where every user can import them; choosing equivalent encodings that
-// tsc evaluates faster (see docs/scaling.md); and pre-normalizing terms where that makes
-// checking cheaper. Any rewrite must keep verification sound: the kernel still checks the
-// rewritten declarations, and a rewrite is only allowed if the original statement follows
-// from it by definitional unfolding the kernel itself performs, so it cannot change what
-// is proved.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { relative, dirname } from "node:path";
