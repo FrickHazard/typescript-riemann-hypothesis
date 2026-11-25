@@ -46,9 +46,10 @@ git -C ../riemann-hypothesis checkout 9282d3a102c4aff0e6026746db2a8990f5d9cddd
 git clone https://github.com/leanprover/lean4export ../lean4export
 git -C ../lean4export checkout df81913eee5519d5a88ae5b0fd701b5298cc29ab
 echo "leanprover/lean4:v4.37.0-rc1" > ../lean4export/lean-toolchain     # must match the .olean files
-cp tools/ExportServer.lean ../lean4export/
-printf '\n[[lean_exe]]\nname = "exportserver"\nroot = "ExportServer"\n' >> ../lean4export/lakefile.toml
-(cd ../lean4export && lake build lean4export exportserver)
+cp tools/ExportServer.lean tools/ModExport.lean ../lean4export/
+git -C ../lean4export apply ../typescript-riemann-hypothesis/tools/lean4export-exportOnly.patch   # per-module export filter
+printf '\n[[lean_exe]]\nname = "exportserver"\nroot = "ExportServer"\n\n[[lean_exe]]\nname = "modexport"\nroot = "ModExport"\n' >> ../lean4export/lakefile.toml
+(cd ../lean4export && lake build lean4export exportserver modexport)
 
 # 2. Mathlib's official cache, then compile the proof ourselves (Lean's kernel checks it)
 (cd ../riemann-hypothesis && MATHLIB_CACHE_GET_URL=https://cache.mathlib.org/mathlib4 lake exe mathlib/cache get)  # 7.8 GB
@@ -59,8 +60,12 @@ printf '\n[[lean_exe]]\nname = "exportserver"\nroot = "ExportServer"\n' >> ../le
   Main ../rh-deps.tsv $(cat export-targets.txt))                          # ~16 min, 1.41M constants, 2.6 GB
 node --max-old-space-size=20000 tools/closure.mjs ../rh-deps.tsv 5000 --all > ../rh-order-all.tsv   # ~1 min
 
-# 4a. Write the whole proof as TypeScript projects (no checking): hours, disk-bound, 50+ GB
-node --max-old-space-size=20000 tools/genall.mjs ../rh-order-all.tsv ../rh-ts-full --size 300 --thm-as-axiom
+# 4a. Export the whole proof per Lean module (resumable: rerun to continue; N parallel workers),
+#     then generate deterministic TypeScript per module plus manifest.json (resumable, parallel)
+cut -f1 ../rh-deps.tsv > ../rh-names.txt
+(cd ../riemann-hypothesis && for sh in 0 1 2 3; do \
+  lake env ../lean4export/.lake/build/bin/modexport Main ../rh-names.txt ../rh-ndjson $sh 4 & done; wait)
+node tools/modts.mjs ../rh-ndjson ../rh-ts
 # 4b. Or check incrementally, smallest first, one tsc -b project per batch
 node --max-old-space-size=20000 tools/closure.mjs ../rh-deps.tsv 5000 > ../rh-order.tsv
 node tools/batch.mjs init ../rh-ts ../rh-order.tsv

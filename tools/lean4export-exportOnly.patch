@@ -1,0 +1,23 @@
+diff --git a/Export.lean b/Export.lean
+index cda1993..16f5074 100644
+--- a/Export.lean
++++ b/Export.lean
+@@ -44,6 +44,9 @@ structure State where
+   /-- Maps the name of an inductive type to a list of names of corresponding recursors.
+   This is used to facilitate exporting of related inductives, constructors, and recursors as a unit. -/
+   recursorMap : NameMap NameSet := {}
++  /-- If set, only these constants are exported; any other constant they use is left as a
++  reference by name (for per-module export: one module's declarations at a time). -/
++  exportOnly : Option NameSet := none
+ 
+ abbrev M := ReaderT Context <| StateT State IO
+ 
+@@ -237,6 +240,8 @@ partial def dumpConstant (c : Name) : M Unit := do
+     | if (← get).ignoreMissing then return else panic! s!"Constant {c} not found in environment."
+   if ((declar.isUnsafe || declar.isPartial) && !(← get).exportUnsafe) || (← get).visitedConstants.contains c then
+     return
++  if let some only := (← get).exportOnly then
++    if !only.contains c then return
+   modify fun st => { st with visitedConstants := st.visitedConstants.insert c }
+   match declar with
+   | .axiomInfo val => do
