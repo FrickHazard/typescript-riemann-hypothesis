@@ -31,6 +31,24 @@ Lean exports: `tools/export-lean.sh Init Nat.add_comm` (see exports/README.md).
 
 Lean kernel in TS types modeled on nano-lean (levels, whnf/defeq/infer, inductives with iota/K/structure eta, Nat literals; inductive blocks not yet validated) → `tools/lean2ts.mjs` converts lean4export exports → verified real Lean core and Mathlib lemmas and 30/32 nano-lean fixtures with one patched `tsc` (TypeScript 6.0.3) → built the riemann-hypothesis proof locally (59,828 modules, 11.4 h), ranked its 1.41M constants by dependency closure, and checked the 9,307 smallest as incremental `tsc -b` projects (`tools/batch.mjs`, persistent `tools/ExportServer.lean`) → generating the entire proof as TS projects (`tools/genall.mjs`, in progress).
 
+## Pipeline artifacts: NDJSON vs TypeScript
+
+The proof passes through two encodings of the same content:
+
+| | NDJSON (`../rh-ndjson/<Module>.ndjson`) | TypeScript (`../rh-ts/ts/<Module path>.ts`) |
+|---|---|---|
+| Produced by | `tools/ModExport.lean` reading the `.olean` files (Lean) | `tools/modts.mjs` from the NDJSON (Node) |
+| What it is | Lean's kernel data (`Expr`, `ConstantInfo`) in lean4export format: one JSON object per line (a name, level, expression node or declaration), referring to earlier lines by number | the same terms as type aliases and `Thm<...>`/`Defn<...>` declarations, which `tsc` checks by evaluating them through the kernel in `src/` |
+| Example node | `{"ie":8,"app":{"fn":7,"arg":2}}` | `export type H8f3a91c2d0e4b7a1 = App<H1c2d..., H7e9f...>;` |
+| Node names | numbers, local to each module file | content hashes, identical everywhere |
+| Extras | none | imports between modules, `Decls` tables; later, environments and check statements |
+| Cost to regenerate | needs Lean and the ~33 GB environment (~45 min for the RH proof) | fast and parallel, from the NDJSON alone |
+| Role | durable snapshot of the proof terms; keep it (compressed) | what `tsc` checks; regenerate whenever the layout changes |
+
+So the expensive Lean step runs once, and every change to the TypeScript side (inlining single-use nodes, direct declaration references, global compression, project layout) is a cheap regeneration from the NDJSON. Both stages are deterministic and resumable: reruns skip modules whose output exists and is up to date.
+
+For the RH proof (2026-11-25): 64,290 modules covering all 1,409,262 constants of the five target theorems' closure, 77 GB of NDJSON, exported in ~45 min with resumption (a restarted run skipped the 13,545 modules already done).
+
 ## Recipe: reproduce everything
 
 Pins: Lean `v4.37.0-rc1`; [riemann-hypothesis](https://github.com/leanprover-community/riemann-hypothesis) `9282d3a102c4aff0e6026746db2a8990f5d9cddd`, which pins Mathlib `31ce06eaadf4a200c0e1407c5f10953cf606b8f8`; [lean4export](https://github.com/leanprover/lean4export) `df81913eee5519d5a88ae5b0fd701b5298cc29ab` (format 3.1.0); Node 26; `typescript@6.0.3`. Kernel design reference: [nano-lean](https://github.com/sdiehl/nano-lean) `5cd4a25`. All repos are siblings of this one. Times are for an i7-8700K (6 cores), 46 GB RAM, SATA SSD.

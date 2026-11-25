@@ -158,12 +158,20 @@ export function feed(text, path = "<input>") {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-const [, , inArg, outPath] = process.argv;
+const cliArgs = process.argv.slice(2);
+const inline = cliArgs.includes("--inline");
+const [inArg, outPath] = cliArgs.filter((a) => a !== "--inline");
 if (!inArg || !outPath) {
   console.error("usage: node tools/lean2ts.mjs IN.ndjson OUT.ts");
   process.exit(2);
 }
 convert(readFileSync(inArg, "utf8"), inArg);
+if (inline) {
+  // Rebuild the alias lines and declarations from the inlined item stream.
+  const it2 = inlineItems(items);
+  lines = it2.filter((x) => x.alias).map((x) => `type ${x.alias} = ${x.rhs};`);
+  decls = it2.filter((x) => x.decl).map((x) => x.decl);
+}
 
 let src = relative(dirname(outPath), "src/index").replaceAll("\\", "/");
 if (!src.startsWith(".")) src = "./" + src;
@@ -186,4 +194,39 @@ export type Result = CheckEnv<Decls>;
 `;
 writeFileSync(outPath, out);
 console.error(`${outPath}: ${decls.length} declarations, ${lines.length} DAG nodes`);
+}
+
+/**
+ * Inline DAG nodes that are used once (or are tiny) into their single user, so only shared
+ * nodes get a named type alias. Measured on RH modules, ~85% of nodes are used exactly once.
+ * `items` is convert()/feed() output with export-local names (E12, U3); returns the same
+ * shape with fewer aliases. Inlining stops at depth `maxDepth` so the TypeScript parser and
+ * checker never see very deep literal types. Aliases that remain keep their export names.
+ */
+export function inlineItems(items, { maxDepth = 24, tiny = 24 } = {}) {
+  const REFS = /"(?:[^"\\]|\\.)*"|\b([EU]\d+)\b/g;
+  const uses = new Map();
+  const count = (s) => { for (const m of s.matchAll(REFS)) if (m[1]) uses.set(m[1], (uses.get(m[1]) ?? 0) + 1); };
+  for (const it of items) count(it.alias ? it.rhs : it.decl);
+  const inl = new Map(); // alias -> { text, depth } for inlined nodes
+  const subst = (s) => {
+    let depth = 0;
+    const text = s.replace(REFS, (m, r) => {
+      if (!r) return m;
+      const x = inl.get(r);
+      if (!x) return r;
+      if (x.depth > depth) depth = x.depth;
+      return x.text;
+    });
+    return { text, depth: depth + 1 };
+  };
+  const out = [];
+  for (const it of items) {
+    if (it.alias) {
+      const { text, depth } = subst(it.rhs);
+      if (depth <= maxDepth && ((uses.get(it.alias) ?? 0) <= 1 || text.length <= tiny)) inl.set(it.alias, { text, depth });
+      else out.push({ alias: it.alias, rhs: text });
+    } else out.push({ decl: subst(it.decl).text, name: it.name });
+  }
+  return out;
 }
