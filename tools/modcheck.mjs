@@ -21,6 +21,8 @@ const flag = (f) => { const i = args.indexOf(f); return i >= 0 ? args.splice(i, 
 const li = args.indexOf("--limit");
 const LIMIT = li >= 0 ? Number(args.splice(li, 2)[1]) : Infinity;
 const noRun = flag("--no-run");
+const oi = args.indexOf("--only");
+const ONLY = oi >= 0 ? Number(args.splice(oi, 2)[1]) : null; // check just declaration #ONLY
 const [proofArg, ...mods] = args;
 const PROOF = resolve(proofArg);
 const REPO = resolve(new URL("..", import.meta.url).pathname);
@@ -34,7 +36,7 @@ for (const mod of mods) {
   // Transitive module closure.
   const closure = new Set(), stack = [...info.uses];
   while (stack.length) { const m = stack.pop(); if (closure.has(m)) continue; closure.add(m); stack.push(...manifest[m].uses); }
-  const file = join(PROOF, "check", modPath(mod) + ".check.ts");
+  const file = join(PROOF, "check", modPath(mod) + (ONLY === null ? "" : `.only${ONLY}`) + ".check.ts");
   mkdirSync(dirname(file), { recursive: true });
   const rel = (m) => { let r = relative(dirname(file), join(PROOF, "ts", modPath(m) + ".ts")).replace(/\.ts$/, ""); return r.startsWith(".") ? r : "./" + r; };
   let kernel = relative(dirname(file), join(REPO, "src/index")); if (!kernel.startsWith(".")) kernel = "./" + kernel;
@@ -50,9 +52,9 @@ for (const mod of mods) {
   lines.push("type OwnIdx = {");
   info.decls.forEach((n, i) => lines.push(`  ${JSON.stringify(n)}: Idx<Own[${JSON.stringify(n)}], ${i}>;`));
   lines.push("};", "type Env = Imported & OwnIdx;", "");
-  decls.forEach((n, i) => lines.push(`export type C${i} = Verified<CheckDeclAt<Env, Own[${JSON.stringify(n)}], ${i}>>;`));
+  decls.forEach((n, i) => { if (ONLY === null || i === ONLY) lines.push(`export type C${i} = Verified<CheckDeclAt<Env, Own[${JSON.stringify(n)}], ${i}>>;`); });
   writeFileSync(file, lines.join("\n") + "\n");
-  const tsconfig = join(dirname(file), "tsconfig." + mod + ".json");
+  const tsconfig = join(dirname(file), "tsconfig." + mod + (ONLY === null ? "" : `.only${ONLY}`) + ".json");
   writeFileSync(tsconfig, JSON.stringify({ compilerOptions: { strict: true, noEmit: true, skipLibCheck: true, types: [],
     moduleResolution: "bundler", module: "esnext", target: "esnext" }, files: [file] }));
   console.log(`${mod}: ${decls.length}/${info.decls.length} declarations, ${imp.length} imported modules`);
