@@ -42,6 +42,17 @@ Lean kernel in TS types modeled on nano-lean (levels, whnf/defeq/infer, inductiv
 
 In the new closure, the riemann-hypothesis modules are 64% of the NDJSON (803 modules, 3.0 GB) and Mathlib 15% (4,420 modules, 0.7 GB).
 
+## Verification status (2026-11-26)
+
+**The Riemann Hypothesis is not yet verified by `tsc`.** What exists today:
+
+- `proof/` holds the whole proof closure as TypeScript (all 222,119 constants, 5,394 module files plus interface files `X.api.ts`, where theorems appear as statements only so each proof is checked once, in its own module).
+- `tools/checkall.mjs` checks every module with `tsc` (via `tools/modcheck.mjs`), cheapest first, resumably. A first run verified **128 modules (3,301 declarations), all of Lean core's `Init.Prelude` and `Init.Core` among them, with 0 failures**, before it was stopped.
+- The kernel is the bottleneck: declarations take 0.2 s to ~50 s each, so a full run would take days at this speed. Speeding up the kernel (caching whnf/defeq results, as nano-lean does) is the next step; the final claim should come from one full run on the final kernel.
+- Known soundness gap: inductive declarations are not yet validated (positivity, universe constraints, recursor rules are trusted as exported).
+
+Reproduce a module check: `node tools/modcheck.mjs proof Init.Core` (needs `npm install`).
+
 ## Pipeline artifacts: NDJSON vs TypeScript
 
 The proof passes through two encodings of the same content:
