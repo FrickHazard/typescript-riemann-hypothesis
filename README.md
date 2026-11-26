@@ -31,6 +31,17 @@ Lean exports: `tools/export-lean.sh Init Nat.add_comm` (see exports/README.md).
 
 Lean kernel in TS types modeled on nano-lean (levels, whnf/defeq/infer, inductives with iota/K/structure eta, Nat literals; inductive blocks not yet validated) → `tools/lean2ts.mjs` converts lean4export exports → verified real Lean core and Mathlib lemmas and 30/32 nano-lean fixtures with one patched `tsc` (TypeScript 6.0.3) → built the riemann-hypothesis proof locally (59,828 modules, 11.4 h), ranked its 1.41M constants by dependency closure, and checked the 9,307 smallest as incremental `tsc -b` projects (`tools/batch.mjs`, persistent `tools/ExportServer.lean`) → generating the entire proof as TS projects (`tools/genall.mjs`, in progress).
 
+**Smaller edition (2026-11-26).** `leanprover-community/riemann-hypothesis` `main` is now the 806-file readable edition of [lsernau/grh-lean](https://github.com/lsernau/grh-lean) (Lean v4.35.0, Mathlib `56a005855ea17e0b0958f73ec801ae140b0a1679`, commit `d1a89786248472c61263785a6fe60d9fec66afc2`), same five theorems and axioms. Through the same pipeline (export tools rebuilt for v4.35.0):
+
+| | old (59,869 files, `9282d3a1`) | new (806 files, `d1a89786`) |
+|---|---|---|
+| Lean build | 11.4 h | 74 min |
+| Closure | 1,409,262 constants | 222,119 |
+| Per-module export | ~45 min, 77 GB NDJSON | 2 min 15 s, 4.7 GB |
+| TypeScript (format v2) | 64,290 files, 23.6 GB, 4.89 GB compressed | 5,394 files, 1.43 GB, 0.30 GB compressed |
+
+In the new closure, the riemann-hypothesis modules are 64% of the NDJSON (803 modules, 3.0 GB) and Mathlib 15% (4,420 modules, 0.7 GB).
+
 ## Pipeline artifacts: NDJSON vs TypeScript
 
 The proof passes through two encodings of the same content:
