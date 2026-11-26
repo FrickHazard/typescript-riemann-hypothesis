@@ -2,3 +2,7 @@
 	path = lean/riemann-hypothesis
 	url = https://github.com/leanprover-community/riemann-hypothesis
 	shallow = true
+[submodule "lean/grh-lean"]
+	path = lean/grh-lean
+	url = https://github.com/lsernau/grh-lean
+	shallow = true
