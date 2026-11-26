@@ -66,6 +66,23 @@ const SHORT_RE = new RegExp(`"(?:[^"\\\\]|\\\\.)*"|\\b(${Object.keys(SHORT).join
 const STR_RE = /"(?:[^"\\]|\\.)*"/g;
 const b36 = (n) => n.toString(36);
 
+
+/** Split the top-level arguments of `Head<a, b, ...>` (strings and nested brackets respected). */
+function topArgs(t) {
+  const open = t.indexOf("<"), out = [];
+  let depth = 0, start = open + 1, inStr = false;
+  for (let i = open + 1; i < t.length - 1; i++) {
+    const ch = t[i];
+    if (inStr) { if (ch === "\\") i++; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') inStr = true;
+    else if (ch === "<" || ch === "[" || ch === "{" || ch === "(") depth++;
+    else if (ch === ">" || ch === "]" || ch === "}" || ch === ")") depth--;
+    else if (ch === "," && depth === 0) { out.push(t.slice(start, i).trim()); start = i + 1; }
+  }
+  out.push(t.slice(start, t.length - 1).trim());
+  return out;
+}
+
 function emitModule(mod, text, owner, outDir) {
   const { items } = convert(text, mod);
   // Cross-module references, from the unshortened terms.
@@ -99,22 +116,54 @@ function emitModule(mod, text, owner, outDir) {
     `import type { A, L, P, S, C, T, J, N, R, B, Z, U, M, I, Q, Ax, Df, Th, Op, Qu, In, Ct, Rc, RR } from "${kernel}";`];
   const usesSorted = [...uses].sort();
   for (const u of usesSorted) {
-    let rel = relative(dirname(file), join(outDir, "ts", modPath(u).replace(/\.ts$/, "")));
+    // Relative to the target .ts file, then drop the extension: a module can share its name
+    // with a directory (Mathlib/Order/Lattice.ts next to Mathlib/Order/Lattice/).
+    let rel = relative(dirname(file), join(outDir, "ts", modPath(u))).replace(/\.ts$/, "");
     if (!rel.startsWith(".")) rel = "./" + rel;
-    lines.push(`import type { Decls as M${sha1(u).slice(0, 12)} } from "${rel}";`);
+    lines.push(`import type { Decls as M${sha1(u).slice(0, 12)} } from "${rel}.api";`);
   }
+  const header = lines.slice();
   for (const [lit, id] of strs) lines.push(`type ${id} = ${lit};`);
   for (const [id, t] of body) lines.push(`type ${id} = ${tab(t)};`);
   lines.push("export type Decls = {");
   for (const [name, id] of decls) lines.push(`${JSON.stringify(name)}: ${id};`);
   lines.push("};", "");
   const out = lines.join("\n");
+  // Interface file for importers: theorems as axioms with the same statement (their proofs
+  // are checked in this module's own check), keeping only the nodes the interface reaches.
+  const texts = new Map(body), thm = new Set();
+  const apiText = new Map();
+  for (const [name, id] of decls) {
+    const t = texts.get(id);
+    if (t.startsWith("Th<")) { const [n, ps, ty] = topArgs(t); apiText.set(id, `Ax<${n}, ${ps}, ${ty}>`); thm.add(id); }
+  }
+  const IDREF = /"(?:[^"\\]|\\.)*"|(\$[0-9a-z]+)/g;
+  const keep = new Set(), stack = decls.map((d) => d[1]);
+  while (stack.length) {
+    const id = stack.pop();
+    if (keep.has(id)) continue;
+    keep.add(id);
+    for (const m of (apiText.get(id) ?? texts.get(id)).matchAll(IDREF)) if (m[1] && texts.has(m[1])) stack.push(m[1]);
+  }
+  const api = header.slice();
+  api[0] = api[0].replace("Do not edit.", "Interface (theorem statements only). Do not edit.");
+  const apiBody = body.filter(([id]) => keep.has(id)).map(([id, t]) => [id, tab(apiText.get(id) ?? t)]);
+  const usedStr = new Set(apiBody.flatMap(([, t]) => [...t.matchAll(/\b_[0-9a-z]+\b/g)].map((m) => m[0])));
+  for (const [lit, id] of strs) if (usedStr.has(id)) api.push(`type ${id} = ${lit};`);
+  for (const [id, t] of apiBody) api.push(`type ${id} = ${t};`);
+  api.push("export type Decls = {");
+  for (const [name, id] of decls) api.push(`${JSON.stringify(name)}: ${id};`);
+  api.push("};", "");
+  const apiOut = api.join("\n");
   if (out.length > 50e6) console.error(`warning: ${mod} is ${(out.length / 1e6).toFixed(0)} MB (GitHub warns above 50 MB, rejects above 100 MB)`);
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file + ".tmp", out);
   renameSync(file + ".tmp", file);
+  const apiFile = file.replace(/\.ts$/, ".api.ts");
+  writeFileSync(apiFile + ".tmp", apiOut);
+  renameSync(apiFile + ".tmp", apiFile);
   return { ts: relative(outDir, file), decls: decls.map((d) => d[0]), uses: usesSorted,
-    nodes: body.length - decls.length, bytes: out.length };
+    nodes: body.length - decls.length, bytes: out.length, apiBytes: apiOut.length };
 }
 
 if (isMainThread) {
