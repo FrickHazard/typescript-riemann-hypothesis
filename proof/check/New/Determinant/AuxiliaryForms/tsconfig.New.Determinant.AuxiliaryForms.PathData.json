@@ -1,0 +1,1 @@
+{"compilerOptions":{"strict":true,"noEmit":true,"skipLibCheck":true,"types":[],"moduleResolution":"bundler","module":"esnext","target":"esnext"},"files":["./PathData.check.ts"]}

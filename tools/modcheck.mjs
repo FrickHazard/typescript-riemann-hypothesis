@@ -56,7 +56,7 @@ for (const mod of mods) {
   writeFileSync(file, lines.join("\n") + "\n");
   const tsconfig = join(dirname(file), "tsconfig." + mod + (ONLY === null ? "" : `.only${ONLY}`) + ".json");
   writeFileSync(tsconfig, JSON.stringify({ compilerOptions: { strict: true, noEmit: true, skipLibCheck: true, types: [],
-    moduleResolution: "bundler", module: "esnext", target: "esnext" }, files: [file] }));
+    moduleResolution: "bundler", module: "esnext", target: "esnext" }, files: ["./" + file.split("/").pop()] }));
   console.log(`${mod}: ${decls.length}/${info.decls.length} declarations, ${imp.length} imported modules`);
   if (noRun) continue;
   const t = Date.now();
