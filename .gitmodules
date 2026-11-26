@@ -1,0 +1,4 @@
+[submodule "lean/riemann-hypothesis"]
+	path = lean/riemann-hypothesis
+	url = https://github.com/leanprover-community/riemann-hypothesis
+	shallow = true
